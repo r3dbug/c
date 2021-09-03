@@ -28,6 +28,7 @@ int             mreg_capturing_groups[10];
 int             mreg_number_capturing_groups;
 int			    mreg_replacement_type;
 unsigned int    mreg_use_non_greedy = 0; // when set => calculate reluctant
+unsigned int    mreg_leave_on_first=0; // used for "reluctant, but greedy" lookaround search
 unsigned int    mreg_no_errors = MREG_NO_ERRORS;
 unsigned int    mreg_console = MREG_CONSOLE;
 
@@ -243,7 +244,7 @@ int mreg_build_replace(regmatch_t* subs, char* replacement, char* text, char* re
 }
 
 regmatch_t* mreg_match_shorter(regex_t re, char* text, regoff_t start, regoff_t end) {
-	int li, mi, hi, fix, d1, d2; // low/middle/high interval
+	int li, mi, hi, fix, d1, d2, initial_eo, leave_on_first; // low/middle/high interval
     char temp;
 	signed int err;
 	regmatch_t *asubs, *match, *t;
@@ -252,33 +253,50 @@ regmatch_t* mreg_match_shorter(regex_t re, char* text, regoff_t start, regoff_t 
 	match = subs1;
 	mi=hi;//(li+hi)/2;
 	d1=99999;
-
+	leave_on_first=0;
+	initial_eo=match[0].rm_eo;
+		
 	if (mreg_console) printf("Search for shorter in: %s\n",text);
 	do {
 		d2=d1;
-		asubs[0].rm_so=fix;   // what do these do?
-		asubs[0].rm_eo=mi;
 		temp=text[mi+1]; text[mi+1]=0;
 		err = regexec(&re,text,(size_t)MREG_NS,asubs,eopts);
-		if (mreg_console) printf("Test[%d-%d]: li=%d, mi=%d, hi=%d; err=%d; str=%s => ", fix, mi, li, mi, hi, err, text);
+		if (mreg_console) printf("Test[%d-%d]: li=%d, mi=%d, hi=%d; err=%d; str=%s\n", fix, mi, li, mi, hi, err, text);
 		text[mi+1]=temp;
 		if (err) {
 			li=mi;
 			mi=(li+hi)/2; // no match => bigger interval
+			if (mreg_console) printf("no match\n");
 		
 		} else {
 			hi=mi;
 			mi=(li+hi)/2;
 			t=match; match=asubs; asubs=t;
-		}
-		//scanf("%c",temp);
-		if (mreg_console) {
-			if (err) printf("no match\n");
-			else
-			   printf("MATCH[%d-%d]: %.*s\n", asubs[0].rm_so, asubs[0].rm_eo, asubs[0].rm_eo-asubs[0].rm_so, text+asubs[0].rm_so);
+			if (initial_eo!=match[0].rm_eo) {
+				if (mreg_console) {	
+					printf("=> VALID MATCH[%d-%d]: %.*s\n", asubs[0].rm_so, asubs[0].rm_eo, asubs[0].rm_eo-asubs[0].rm_so, text+asubs[0].rm_so);
+					printf("CHECK LOOKAROUNDS:\n");
+			   		//printf("lb=%s type=%d position=%d text=%s\n",mreg_lookbehind,mreg_lookbehind_type, asubs[0].rm_so, text, text); 
+			   		//printf("la=%s type=%d position=%d text=%s\n",mreg_lookahead,mreg_lookahead_type, asubs[0].rm_eo, text);
+				}
+			 	temp=mreg_check_lookaround(mreg_lookbehind,mreg_lookbehind_type, asubs[0].rm_so, text, asubs[0].rm_eo, mreg_lookahead_type, mreg_lookahead); 
+				if (temp && mreg_leave_on_first) {
+					leave_on_first=1;
+					match=asubs;
+			   		if (mreg_console) {	
+						printf("GREEDY MATCH FOUND IN SEARCH FOR SHORTER\n");
+						printf("leave_on_first=%d\n", mreg_use_non_greedy, leave_on_first);
+						printf("result: so=%d eo=%d text=%s\n",asubs[0].rm_so,asubs[0].rm_eo,text);
+					}
+				} else if (!temp && mreg_console) printf("NO MATCH FOR LOOKAROUNDS => continue search for shorter\n");
+			} else { 
+				if (mreg_console) {
+					printf("=> DISCARD THIS MATCH[%d-%d]: %.*s\n", asubs[0].rm_so, asubs[0].rm_eo, asubs[0].rm_eo-asubs[0].rm_so, text+asubs[0].rm_so);
+				}
+			}
 		}
 		d1=hi-li;
-	} while ((d1>=0) && (d1!=d2));
+	} while ((d1>=0) && (d1!=d2) && (!leave_on_first));
 	return match;
 }
 
@@ -361,6 +379,7 @@ signed int mreg_replace(char* pattern_arg, char* text_arg, char* replacement, ch
 	text=text_arg;
 	mreg_search_lookahead=0;
 	mreg_use_non_greedy=0; // start in default = greedy mode
+	mreg_leave_on_first=0;
 
 	strcpy(mreg_internal_buffer,pattern_arg); // don't trash callers pattern (make copy)
 
@@ -399,7 +418,9 @@ again:
 		
 		if ((err==1) && ((mreg_lookahead_type!=0) && (mreg_use_non_greedy==0))) {
 		    mreg_search_lookahead=0;
-		    mreg_use_non_greedy=1;
+		    mreg_leave_on_first= mreg_use_non_greedy ? 0 : 1;
+			if (mreg_console) printf("ACTIVATE SHORTER SEARCH FOR LOOKAROUNDS\nmreg_leave_on_first=%d\n",mreg_leave_on_first);
+			mreg_use_non_greedy=1;
 		    text=text_arg;
 		    goto again; // yes: goto! (again!:) - example: (?<a)b.*b(?=b) in aaab1111bb2222bccc => try non greedy
 		}

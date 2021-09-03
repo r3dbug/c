@@ -26,7 +26,7 @@ char       test[][TEST_STRING_LENGTH] = {
 /*17*/      "(?<!a)b.*?b", "aaab1111bb2222bccc", "bb",
 /*18*/      "(?<!a)b.*b", "aaab1111bb2222bccc", "bb2222b",
 /*19*/      "b.*?b(?!c)", "aaab1111bb2222bccc", "b1111b",
-/*20*/      "b.*b(?!c)", "aaab1111bb2222bccc", "b1111b",
+/*20*/      "b.*b(?!c)", "aaab1111bb2222bccc", "b1111bb",
 /*21*/      "b.{2}", "aaab1111bb2222bccc", "b11",
 /*22*/      "b.{2}?", "aaab1111bb2222bccc", "b11",
 /*23*/      "(a+)(.*)(c+)", "aaab1111bb2222bccc", "aaab1111bb2222bccc",
@@ -74,24 +74,5 @@ int main(void) {
 
 	}
 
-/*
-	mreg_console_off();
-
-	printf("Pattern: %s\n", pattern);
-	printf("Text: %s\n", text);
-
-	err = mreg_quote(pattern,escaped_string);
-	printf("Escaped: %s\n", escaped_string);
-
-	err = mreg_context_replace(pattern, text, replacement, result);
-	printf("Replace(context,all): %s\n",replacement);
-	printf("Hits: %d\n",err);
-	printf("Result: %s\n", result);
-
-	for (i=0;i<=9;i++) {
-		r=mreg_extract(i,text,result);
-		if (!r) printf("Extract: group=%d result=%s\n",i,result);
-	}
-*/
 	mreg_finish();
 }
