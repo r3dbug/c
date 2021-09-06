@@ -31,6 +31,7 @@ unsigned int    mreg_use_non_greedy = 0; // when set => calculate reluctant
 unsigned int    mreg_leave_on_first=0; // used for "reluctant, but greedy" lookaround search
 unsigned int    mreg_no_errors = MREG_NO_ERRORS;
 unsigned int    mreg_console = MREG_CONSOLE;
+unsigned int    mreg_old_use_non_greedy;
 
 // functions
 
@@ -264,13 +265,27 @@ regmatch_t* mreg_match_shorter(regex_t re, char* text, regoff_t start, regoff_t 
 		if (mreg_console) printf("Test[%d-%d]: li=%d, mi=%d, hi=%d; err=%d; str=%s\n", fix, mi, li, mi, hi, err, text);
 		text[mi+1]=temp;
 		if (err) {
-			li=mi;
-			mi=(li+hi)/2; // no match => bigger interval
-			if (mreg_console) printf("no match\n");
-		
+			if (mreg_leave_on_first && (mreg_old_use_non_greedy==0)) {
+				// no match
+				// try with string minus last character (brute force)
+				hi-=1;
+				mi=hi;
+				if (mreg_console) printf("Brute force: li=%d mi=%d hi=%d\n", li, mi, hi);
+			} else { 
+				li=mi;
+				mi=(li+hi)/2; // no match => bigger interval
+				if (mreg_console) printf("no match\n");
+			}
 		} else {
-			hi=mi;
-			mi=(li+hi)/2;
+			if (mreg_console) printf("mreg_leave_on_first=%d mreg_use_non_greedy=%d\n", mreg_leave_on_first, mreg_use_non_greedy);
+			if (mreg_leave_on_first && (mreg_old_use_non_greedy==0)) {
+				hi-=1;
+				mi=hi;
+				if (mreg_console) printf("Brute force: li=%d mi=%d hi=%d\n", li, mi, hi);
+			} else {
+				hi=mi;
+				mi=(li+hi)/2;
+			}
 			t=match; match=asubs; asubs=t;
 			if (initial_eo!=match[0].rm_eo) {
 				if (mreg_console) {	
@@ -419,7 +434,8 @@ again:
 		if ((err==1) && ((mreg_lookahead_type!=0) && (mreg_use_non_greedy==0))) {
 		    mreg_search_lookahead=0;
 		    mreg_leave_on_first= mreg_use_non_greedy ? 0 : 1;
-			if (mreg_console) printf("ACTIVATE SHORTER SEARCH FOR LOOKAROUNDS\nmreg_leave_on_first=%d\n",mreg_leave_on_first);
+			if (mreg_console) printf("ACTIVATE SHORTER SEARCH FOR LOOKAROUNDS\nmreg_leave_on_first=%d mreg_use_non_greedy=%d\n",mreg_leave_on_first, mreg_use_non_greedy);
+			mreg_old_use_non_greedy=mreg_use_non_greedy;
 			mreg_use_non_greedy=1;
 		    text=text_arg;
 		    goto again; // yes: goto! (again!:) - example: (?<a)b.*b(?=b) in aaab1111bb2222bccc => try non greedy

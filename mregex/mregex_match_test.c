@@ -3,7 +3,7 @@
 
 #define TEST_STRING_LENGTH 100
 #define TEST_START 0
-#define TEST_END 23
+#define TEST_END 25
 
 char       test[][TEST_STRING_LENGTH] = {       
 /*0*/		"b.*b", "aaab1111bb2222bccc", "b1111bb2222b",
@@ -30,6 +30,8 @@ char       test[][TEST_STRING_LENGTH] = {
 /*21*/      "b.{2}", "aaab1111bb2222bccc", "b11",
 /*22*/      "b.{2}?", "aaab1111bb2222bccc", "b11",
 /*23*/      "(a+)(.*)(c+)", "aaab1111bb2222bccc", "aaab1111bb2222bccc",
+/*24*/		"b.*b(?!c)", "aaab1111bb2222bb3333bb4444bccc", "b1111bb2222bb3333bb",
+/*25*/      "b.*?b(?!c)", "aaab1111bb2222bb3333bb4444ccc", "b1111b",
 	};
 
 int main(void) {
@@ -40,8 +42,7 @@ int main(void) {
 
 	char        result[TEST_STRING_LENGTH];
 	signed int  err;
-	int i, r;
-	char escaped_string[100];
+	int i;
 
 	err = mreg_init();
 	if (err) return err;
