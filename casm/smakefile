@@ -1,0 +1,5 @@
+
+
+all:
+    vasm -m68080 -Fhunk -o asm_functions.o asm_functions.s
+    sc math=68881 cpu=68040 link call_asm.c asm_functions.o
