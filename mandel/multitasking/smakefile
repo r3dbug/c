@@ -1,0 +1,4 @@
+
+all:
+	sc link math=68881 cpu=68040 mandelbrot_server.c
+	sc link math=68881 cpu=68040 mandelbrot_client.c
