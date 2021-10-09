@@ -54,16 +54,19 @@ void __asm setstart(void);
 void __asm setstop(void);
 ULONG __asm getstart(void);
 ULONG __asm getstop(void);
+UWORD __asm calcpoint(register __d0 UWORD it,
+                      register __fp0 double cx,
+                      register __fp1 double cy);
 
 
-void PutPixelARGB32(int x, int y, ULONG color) {
+__inline void PutPixelARGB32(int x, int y, ULONG color) {
     if ((x>=0) && (x<saga_resx) && (y>=0) && (y<saga_resy)) {
         *(((ULONG*)saga_aligned)+y*saga_resx+x)=color;
         //saga_aligned[(y*1280*4)+(x*4)]=color;
     }    
 }
 
-void PutPixelRGB24(int x, int y, ULONG color) {
+__inline void PutPixelRGB24(int x, int y, ULONG color) {
     void* p;
     if ((x>=0) && (x<saga_resx) && (y>=0) && (y<saga_resy)) {
         p=saga_aligned+y*saga_resx*3+x*3;
@@ -72,25 +75,25 @@ void PutPixelRGB24(int x, int y, ULONG color) {
     }    
 }
 
-void PutPixelRGB16(int x, int y, UWORD color) {
+__inline void PutPixelRGB16(int x, int y, UWORD color) {
     if ((x>=0) && (x<saga_resx) && (y>=0) && (y<saga_resy)) {
         *(((UWORD*)saga_aligned)+y*saga_resx+x)=color;
     }    
 }
 
-void PutPixelRGB15(int x, int y, UWORD color) {
+__inline void PutPixelRGB15(int x, int y, UWORD color) {
     if ((x>=0) && (x<saga_resx) && (y>=0) && (y<saga_resy)) {
         *(((UWORD*)saga_aligned)+y*saga_resx+x)=color;
     }    
 }
 
-void PutPixelCLUT8(int x, int y, char color) {
+__inline void PutPixelCLUT8(int x, int y, char color) {
     if ((x>=0) && (x<saga_resx) && (y>=0) && (y<saga_resy)) {
         saga_aligned[y*saga_resx+x]=color;
     }
 }
 
-void PutPixel(int x, int y, ULONG color) {
+__inline void PutPixel(int x, int y, ULONG color) {
     switch (saga_bits) {
         case  8 : PutPixelCLUT8(x,y,(char)color); break;
         case 15 : PutPixelRGB15(x,y,(UWORD)color); break;
@@ -116,7 +119,7 @@ char*  OpenSAGAScreen(int resx, int resy, int colors) {
     if ((mode!=0) && (format!=0)) {
         saga_resx=resx;
         saga_resy=resy;
-        saga_mem=(resx*resy*saga_bytes)+8;
+        saga_mem=(resx*resy*saga_bytes)+32;
         buffer=AllocMem(saga_mem, MEMF_PUBLIC | MEMF_CLEAR);
         saga_buffer=buffer;
         if (buffer) {
@@ -138,48 +141,70 @@ ULONG gettime(void) {
 int main(void) {
     // variables
     int x, y;
-    double fx, fy;
-    double minx, maxx, miny, maxy;
-    double cx, cy, zn1x, zn1y, temp;
+    double hfx, hfy, vfx, vfy;
+    double sx[4], sy[4], lx, ly;
+    double cx, cy, znx, zny, zn1x, zn1y;
     char *screen;
     ULONG it;
+    int invit;
     int color;
     ULONG clocks;
     double seconds;
     ULONG frequency=12*7.09*1000000; // 12x core
     ULONG maxit=256;
+    unsigned long screen_offset=0;
     
+    saga_resx=1280;
+    saga_resy=720;
     screen=OpenSAGAScreen(1280,720,8);
     
-    for (color=0;color<256;color++) {
+    for (color=1;color<256;color++) {
         setcolor(color,rand()%256, rand()%256, rand()%256);
     }
     setcolor(0,0,0,0);
+   
+    /*
+    sx[0]=-2.25; sy[0]=-1.6;
+    sx[1]=1.25; sy[1]=-1.35;
+    sx[2]=1; sy[2]=1.5; // not used
+    sx[3]=-2.5; sy[3]=1.25; 
+    */
+    sx[0]=-2.25; sy[0]=-1.25;
+    sx[1]=1.25; sy[1]=-1.25;
+    sx[2]=1; sy[2]=1.25; // not used
+    sx[3]=-2.25; sy[3]=1.25; 
     
-    minx=-2.25;
-    maxx=1.25;
-    miny=-1.25;
-    maxy=1.25;
-    
-    fx=(double)(maxx-minx)/(double)saga_resx;
-    fy=(double)(maxy-miny)/(double)saga_resy;
+    hfx=(double)(sx[1]-sx[0])/(double)saga_resx;
+    hfy=(double)(sy[1]-sy[0])/(double)saga_resy;
+    vfx=(double)(sx[3]-sx[0])/(double)saga_resx;
+    vfy=(double)(sy[3]-sy[0])/(double)saga_resy;
     
     setstart();
+    lx=sx[0];
+    ly=sy[0];
+    cy=ly;
     for (y=0;y<saga_resy;y++) {
-        for (x=0;x<saga_resx;x++) {
-            cx=x*fx+minx;
-            cy=y*fy+miny;
-            zn1x=0;
-            zn1y=0;
+        cx=lx; 
+        for (x=0;x<saga_resx;x++) {    
+            
+            zn1x=znx=0;
+            zn1y=zny=0;
             it=0;
-            do {
-               temp=zn1x*zn1x-zn1y*zn1y+cx;
-               zn1y=2*zn1x*zn1y+cy;
-               zn1x=temp;
-               it++;
-            } while (((zn1x*zn1x+zn1y*zn1y)<4) && (it<maxit));
-            PutPixel(x,y,it%256);
+            //it=(UWORD)calcpoint(maxit,cx, cy);  // doesn't work
+            while ((zn1x+zn1y <= 4) && (it < maxit)) {
+              zny=2*znx*zny+cy;
+              znx=zn1x-zn1y+cx;
+              zn1x=znx*znx;
+              zn1y=zny*zny;    
+              it++;
+            }     
+            saga_aligned[screen_offset++]=(char)it%256;
+            cx+=hfx;
+            cy+=hfy;
         }
+        lx+=vfx;
+        ly+=vfy;
+        cy=ly;
     }
     setstop();
     waitmouse();

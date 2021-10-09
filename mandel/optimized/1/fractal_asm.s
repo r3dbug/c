@@ -10,6 +10,7 @@
 	xref _setstop
 	xref _getstart
 	xref _getstop
+	xref _calcpoint
 	
 _pokemode:
 	; res(d0) + form(d1) => modeword
@@ -32,8 +33,8 @@ _pokemode:
 	; prepare new mode
 	clr.w	$dff1e6				; clear modulo
 	move.l	a0,d0				; buffer (a0)
-	addq.l	#7,d0
-	and.l	#$fffffff8,d0
+	addi.l  #31,d0				; align to avoid off-by-one effects
+	andi.l  #~31,d0
 	move.l	d0,aligned
 	
 	; set new mode
@@ -103,6 +104,36 @@ _getstart:
 
 _getstop:
 	move.l  time_stop,d0
+	rts
+	
+_calcpoint:
+	fmove   #0,fp4		; znx
+	fmove   #0,fp5		; zny
+	fmove   fp4,fp6		; zn1x
+	fmove   fp5,fp7		; zn1y
+	
+.loop:
+	fmove   fp6,fp2
+	fmove   fp7,fp3
+	fadd    fp2,fp3		; zn1x+zn1y
+	fcmp    #4,fp3	    ; <=4?
+	fbgt    .out
+	
+	fadd    fp5,fp5		;     2*znx
+	fmul    fp4,fp5		;     2*znx*zny
+	fadd    fp1,fp5		; zny=2*znx*zny+cy
+	
+	fmove   fp6,fp4
+	fsub    fp7,fp4		;     zn1x-zn1y
+	fadd	fp0,fp4		; znx=zn1x-zn1y+cx
+	
+	fmove   fp4,fp6
+	fmove   fp5,fp7
+	fmul	fp6,fp6		; zn1x=zn1x*zn1x
+	fmul    fp7,fp7		; zn1y=zn1y*zn1y
+	dbra    d0,.loop
+	move.l  #0,d0		; maxit => return 0 (black)
+.out:
 	rts
 	
 *******************************

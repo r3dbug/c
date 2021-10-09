@@ -1,9 +1,9 @@
 
 all:
-    vasm -m68080 -Fhunk -o call_fractal_asm.o fractal_asm.s
-    sc math=68881 cpu=68040 link fractal.c call_fractal_asm.o
+    vasm -m68080 -Fhunk -o fractal_asm.o fractal_asm.s
+    sc math=68881 cpu=68040 link fractal.c fractal_asm.o
     
 debug:
-    vasm -m68080 -Fhunk -o call_fractal_asm.o fractal_asm.s
-    sc math=68881 cpu=68040 debug=sf link fractal.c call_fractal_asm.o
+    vasm -m68080 -Fhunk -linedebug -o fractal_asm.o fractal_asm.s
+    sc math=68881 cpu=68040 debug=sf link fractal.c fractal_asm.o
     
