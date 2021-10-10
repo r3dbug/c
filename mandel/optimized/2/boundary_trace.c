@@ -184,9 +184,13 @@ int Iterate(double x,double y) {
         r2 = r*r;
         i2 = i*i;
         if(r2+i2 >= 4.0) break;
-        ri = r*i;
-        i = ri+ri + y;
-        r = r2 - i2 + x;
+        // using this faster formula gives about 6% speed increase
+        // 4.46 secs instead of 4.77 secs (1280x720, 256 colors, 256 iterations)
+        i=2*r*i+y;
+        r=r2-i2+x;
+        //ri = r*i;
+        //i = ri+ri + y;
+        //r = r2 - i2 + x;
     }
     return iter;
 }
@@ -206,7 +210,10 @@ int Load(unsigned p) {
     x = p % Width;
     y = p / Width;
     result = Iterate(minr + x*stepr, mini + y*stepi);
-    PutPixel(x,y, result);
+    // direct buffer writing gives speed increase from 4.46 to 4.38
+    // (= 2%)
+    saga_aligned[y*saga_resx+x]=result;
+    // PutPixel(x,y, result);
     Done[p] |= Loaded;
     return Data[p] = result;
 }
@@ -328,8 +335,7 @@ int main(void) {
         if(Done[p] & Loaded)
         if(!(Done[p+1] & Loaded)) {
             saga_aligned[p+1] = saga_aligned[p]; 
-            // delete if
-            /*if (p<DoneSize)*/ Done[p+1] |= Loaded;
+            Done[p+1] |= Loaded;
         }
     }
     setstop();

@@ -10,12 +10,9 @@ all:
     delete boundary_trace.lnk
     delete boundary_trace.o
     delete boundary_trace.info
+    delete boundary_trace.lha
     
 debug:
     vasm -m68080 -Fhunk -linedebug -o fractal_asm.o fractal_asm.s
     sc link math=68881 cpu=68040 debug=sf boundary_trace.c fractal_asm.o
-    delete fractal_asm.o
-    delete boundary_trace.lnk
-    delete boundary_trace.o
-    delete boundary_trace.info
     
