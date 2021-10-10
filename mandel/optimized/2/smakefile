@@ -1,0 +1,21 @@
+
+quick: 
+    vasm -m68080 -Fhunk -o fractal_asm.o fractal_asm.s
+    sc link math=68881 cpu=68040 boundary_trace.c fractal_asm.o
+
+all:
+    vasm -m68080 -Fhunk -o fractal_asm.o fractal_asm.s
+    sc link math=68881 cpu=68040 boundary_trace.c fractal_asm.o
+    delete fractal_asm.o
+    delete boundary_trace.lnk
+    delete boundary_trace.o
+    delete boundary_trace.info
+    
+debug:
+    vasm -m68080 -Fhunk -linedebug -o fractal_asm.o fractal_asm.s
+    sc link math=68881 cpu=68040 debug=sf boundary_trace.c fractal_asm.o
+    delete fractal_asm.o
+    delete boundary_trace.lnk
+    delete boundary_trace.o
+    delete boundary_trace.info
+    
