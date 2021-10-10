@@ -131,6 +131,12 @@ char*  OpenSAGAScreen(int resx, int resy, int colors) {
     } else return 0;
 }
 
+
+void CloseSAGAScreen() {   
+    restoremode();
+    FreeMem(saga_buffer,saga_mem);
+}
+
 ULONG gettime(void) {
     ULONG start, stop;
     start=getstart();
@@ -208,7 +214,7 @@ int main(void) {
     }
     setstop();
     waitmouse();
-    restoremode();
+    CloseSAGAScreen();
    
     clocks=gettime();
     seconds=(double)clocks/(double)frequency;
