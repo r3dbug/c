@@ -11,6 +11,7 @@
 	xref _getstart
 	xref _getstop
 	xref _calcpoint
+	xref _iterateasm
 	
 _pokemode:
 	; res(d0) + form(d1) => modeword
@@ -106,34 +107,32 @@ _getstop:
 	move.l  time_stop,d0
 	rts
 	
-_calcpoint:
-	fmove   #0,fp4		; znx
-	fmove   #0,fp5		; zny
-	fmove   fp4,fp6		; zn1x
-	fmove   fp5,fp7		; zn1y
-	
+_iterateasm:
+	move.l  d0,d1
+	fmove	fp0,fp2		; r
+	fmove   fp1,fp3		; i
 .loop:
-	fmove   fp6,fp2
-	fmove   fp7,fp3
-	fadd    fp2,fp3		; zn1x+zn1y
-	fcmp    #4,fp3	    ; <=4?
-	fbgt    .out
+	fmove   fp2,fp4		; r2
+	fmove   fp3,fp5		; i2
+	fmul    fp4,fp4		; r2=r*r
+	fmul    fp5,fp5		; i2=i*i
+	fmove	fp4,fp6
+	fadd    fp5,fp6		; r2+i2
+	fcmp    #4,fp6		; >=4?
+	fbgt	.exit
+	fadd    fp3,fp3
+	fmul    fp2,fp3		; 	
+	fadd    fp1,fp3		; i=2*r*i+y
 	
-	fadd    fp5,fp5		;     2*znx
-	fmul    fp4,fp5		;     2*znx*zny
-	fadd    fp1,fp5		; zny=2*znx*zny+cy
+	fmove   fp4,fp2
+	fsub    fp5,fp2
+	fadd    fp0,fp2		; r=r2-i2+x
 	
-	fmove   fp6,fp4
-	fsub    fp7,fp4		;     zn1x-zn1y
-	fadd	fp0,fp4		; znx=zn1x-zn1y+cx
-	
-	fmove   fp4,fp6
-	fmove   fp5,fp7
-	fmul	fp6,fp6		; zn1x=zn1x*zn1x
-	fmul    fp7,fp7		; zn1y=zn1y*zn1y
-	dbra    d0,.loop
-	move.l  #0,d0		; maxit => return 0 (black)
-.out:
+	dbra 	d1,.loop
+	move.l	#0,d0
+	rts
+.exit:
+	sub.w   d1,d0
 	rts
 	
 *******************************

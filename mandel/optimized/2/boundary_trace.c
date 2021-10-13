@@ -85,9 +85,9 @@ void __asm setstart(void);
 void __asm setstop(void);
 ULONG __asm getstart(void);
 ULONG __asm getstop(void);
-UWORD __asm calcpoint(register __d0 UWORD it,
-                      register __fp0 double cx,
-                      register __fp1 double cy);
+__inline UWORD __asm iterateasm(register __fp0 double x,
+                    register __fp1 double y,
+                    register __d0 UWORD MaxIter);
 
 __inline void PutPixelARGB32(int x, int y, ULONG color) {
     if ((x>=0) && (x<saga_resx) && (y>=0) && (y<saga_resy)) {
@@ -176,10 +176,12 @@ ULONG gettime(void) {
 
 // ************* original boundary trace functions
 
+// this function has been replaced by faster assembly code
+/*
 int Iterate(double x,double y) {
     int iter;
     double r2, ri, i2;
-    double r=x, i=y;        /* z = {r,i} */
+    double r=x, i=y;        /
     for(iter=0; iter<MaxIter; ++iter) {
         r2 = r*r;
         i2 = i*i;
@@ -194,8 +196,9 @@ int Iterate(double x,double y) {
     }
     return iter;
 }
+*/
 
-void AddQueue(unsigned p) {
+__inline void AddQueue(unsigned p) {
     
     if(Done[p] & Queued) return;
     Done[p] |= Queued;
@@ -203,22 +206,31 @@ void AddQueue(unsigned p) {
     if(QueueHead == QueueSize) QueueHead = 0;
 }
 
-int Load(unsigned p) {
+__inline int Load(unsigned p) {
     unsigned x,y;
     int result;
     if(Done[p] & Loaded) return Data[p];
     x = p % Width;
     y = p / Width;
-    result = Iterate(minr + x*stepr, mini + y*stepi);
-    // direct buffer writing gives speed increase from 4.46 to 4.38
-    // (= 2%)
+    
+    /* replacing iteration by handwritten assembly brings execution time down
+     * from 4.38 secs to 3.75 secs (1280x720, 256 colors, 256 iterations)
+     * this is around 14% speed improvement
+     */
+    //result = Iterate(minr + x*stepr, mini + y*stepi);
+    result=iterateasm(minr+x*stepr,mini+y*stepi,MaxIter);
+    
+    /* direct buffer writing gives speed increase from 4.46 to 4.38 
+     * (= 2%)
+     */
     saga_aligned[y*saga_resx+x]=result;
     // PutPixel(x,y, result);
+    
     Done[p] |= Loaded;
     return Data[p] = result;
 }
 
-void Scan(unsigned p) {
+__inline void Scan(unsigned p) {
     unsigned x = p % Width, y = p / Width;
     int center = Load(p);
     int ll = x >= 1, rr = x < Width-1;
@@ -313,11 +325,11 @@ int main(void) {
     // original main part
     // begin by adding the screen edges into the queue 
     for(y=0; y<Height; ++y) {
-        AddQueue(y*Width + 0);
+        AddQueue(y*Width /*+ 0*/);
         AddQueue(y*Width + (Width-1));
     }
     for(x=1; x<Width-1; ++x) {
-        AddQueue(0*Width + x);
+        AddQueue(/*0*Width* +*/ x);
         AddQueue((Height-1)*Width + x);
     }
     // process the queue (which is actually a ring buffer) 
