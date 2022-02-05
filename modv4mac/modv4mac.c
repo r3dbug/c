@@ -1,8 +1,8 @@
 
-/* MODV4NET - modify MAC-address on v4net.device network driver
+/* MODV4MAC - modify MAC-address on v4net.device network driver
    (c) 2022 RedBug
 
-   This program is free softwar: you can redistribute it and/or modify it under
+   This program is free software: you can redistribute it and/or modify it under
    the terms of the GNU General Public License as published by the Free Software
    Foundation, either version 3 of the License, or (at your option) any later 
    version.
@@ -37,8 +37,6 @@ UBYTE*  buffer;
 ULONG   size;
 ULONG   csize;                                                  // length of comparison (5 for repatch or 6 for patch)
 ULONG   mode;
-
-//struct DOSBase* DOSBase;
 
 int ParseMAC(char* s) {
     char c;
@@ -83,8 +81,8 @@ void PatchDriver(char* s) {
     fclose(fh);
 
     // search default mac-address
-    r=1; p=0;
-    while ((p<size-6) && (r!=0)) {
+    r=1; p=size-6;
+    while ((p>=0) && (r!=0)) {
         r=memcmp((void const*) &buffer[p],(void const*)&orig[0],csize);
         if (r==0) {
             if (mode!=MAC_SHOW) {
@@ -96,7 +94,7 @@ void PatchDriver(char* s) {
                 }
                 printf("\n");
             }
-        } else p++;
+        } else p--;
     }
 
     // show actual MAC-address (mode == MAC_SHOW)
@@ -147,15 +145,18 @@ ULONG SetOperationMode(char* s) {
     if (strcmp("patch",s)==NULL) {
         csize=6;
         mode=MAC_PATCH;
-        return mode;
-    } if (strcmp("repatch",s)==NULL) {
-        csize=5; // repatch = only compare 5 hex numbers (last number can be remodified)
+    } else if (strcmp("repatch",s)==NULL) {
+        csize=3; // repatch = only compare 5 hex numbers (last number can be remodified)
         mode=MAC_PATCH;
-        return mode;
     } else if (strcmp("show",s)==NULL) {
-        csize=5;
+        csize=3;
         mode=MAC_SHOW; 
-        return mode;   
+    } else if (strcmp("commodore",s)==NULL) {
+        mac[0]=0x00;
+        mac[1]=0x80;
+        mac[2]=0x10;
+        csize=3;
+        mode=MAC_PATCH;
     } else mode=MODE_ERROR;
     return mode;
 }
@@ -208,9 +209,14 @@ int main(int argc, char* argv[]) {
                  printf("=> use modv4mac patch 05:06:07 (or more numbers) to change last 3 (or more) hex numbers\n");
                  printf("USAGE 2 (repatch):\n");
                  printf("1) modv4mod repatch 06 v4net.patched\n");
-                 printf("=> changes patched 06:80:11:04:04:05 to 06:80:11:04:06\n");
+                 printf("=> changes patched 06:80:11:04:04:05 to 06:80:11:04:04:06\n");
                  printf("=> repatching only works if you change only one (= last) hex number!\n");
-                 printf("USAGE 3 (show):\n");
+                 printf("USAGE 3 (commodore):\n");
+                 printf("1) modv4mac commodore 06 v4net.device\n");
+                 printf("=> changes default 06:80:11:04:04:04 to 00:80:10:04:04:06\n");
+                 printf("=> 00:80:10 is the official Commodore OUI (= first 3 hex numbers)\n");
+                 printf("=> change only last 3 hex numbers (otherwhise you will overwrite Commodore OUI)\n");
+                 printf("USAGE 4 (show):\n");
                  printf("1) modv4mac show v4net.patched\n");
                  printf("=> shows 06:80:11:04:04:xx (= MAC-address of patched driver)\n");
                  printf("=> works only if you change only one (= last) hexadecimal number\n");
