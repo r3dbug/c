@@ -1,0 +1,301 @@
+AFS - AROS/ApolloOS From Scratch
+
+This documents contains some notes about how to get the ApolloOS fork of AROS 
+m68k to work on a V4SA and add some useful tools on it. This is not,
+by any means, an official documentation - just my personal notes about it ...
+Let me know via ApolloOS discord channel if you have any corrections, additions
+etc. to this (@RedBug).
+
+LAST MODIFICATION
+
+2022-03-27
+
+LICENSE
+
+These notes are shared under CC BY-SA 4.0 (Creative Commons Share alike).
+See following link for more details:
+https://creativecommons.org/licenses/by-sa/4.0/
+
+REQUIREMENTS
+
+It is currently not possible to build AROS on a V4SA, so you need an additional
+PC with Linux, plus some other stuff:
+- Linux (Debian Buster in my case, but other distributions might work as well)
+- FS-UAE with a working AmigaDOS/Workbench installation (for example preconfigured 
+Workbench 3.1 from Amiga Forever, you also need to import all the original 
+kickstarts in FS-UAE)
+- some spare CF-cards or SD-cards with a CF-card adapter (you can never have 
+enough of them ...)
+- time ...
+
+COMPILE AROS
+
+The ApolloOS fork of AROS is on github:
+https://github.com/ApolloTeam-dev/AROS
+
+Use the official building instruction to clone and compile it:
+https://github.com/ApolloTeam-dev/AROS/wiki/Building
+
+Basically, it consists of the following steps:
+1) prepare your system (= install all necessary packages on linux):
+sudo apt-get install git-core gcc g++ make cmake gawk bison flex bzip2 netpbm autoconf automake libx11-dev libxext-dev libc6-dev liblzo2-dev libxxf86vm-dev libpng-dev libsdl1.2-dev byacc python-mako genisoimage libxcursor-dev gcc-multilib libxxf86vm1:i386
+
+2) clone repository (using --recursive option):
+git clone --recursive https://github.com/ApolloTeam-dev/AROS.git -b master ApolloOS_Master
+
+3) compile AROS:
+cd ApolloOS_Master
+./rebuild_all.sh
+
+Compiling can take some time (1 hour or more).
+
+Problems that can occur:
+1) package mkisofs missing:
+Originally, the build scripts used the package mkisofs to create an iso image. 
+Mkisofs is no longer part of all linux distributions (for example Debian does not
+contain it any more). You should be able to work around this by setting a symbolic
+link to genisoimage (which is the new package used instead of mkisofs).
+ln -s /usr/bin/genisoimage /usr/bin/mkisofs
+[Not sure, if genisoimage and mkisofs are 100% compatible as to command line 
+arguments, but this seems to fix the corresponding build error that might occur in 
+step 3].
+
+BUILD A BOOTABLE AROS-IMAGE
+
+1st step: Create an empty rdb-hdf (= rigid disk block, = hard disk file)
+- Use the HDF Creator from FS-UAE-Launcher (menu top-left with Amiga symbol). 
+Select "HDF - Partitionable Hard Drive Image (RDB)", give it a name (for example
+"myaros") and choose 4GB as size.
+- Select this file ("myaros") as a disk image under "Hard Drives" in FS-UAE-
+Launcher (together with a bootable AmigaDOS/Workbench harddiskfile, for example
+workbench-311.hdf from AmigaForever). Also, select an Amiga model and Kickstart
+(for example Amiga1200 and Kickstart 3.1).
+- Boot to AmigaDOS/Workbench and open a shell under Workbench => System
+- Type the following in the shell:
+HDToolbox uaehf.device
+- You should get a "Drives have been added or removed from the system" message.
+Select "continue", probably the new drive is shown as "unknown" on 2nd position.
+Select the drive and click on "Change Drive Type", then "Define new ..." and 
+select "Read configuration" (and "continue"). HDToolbox should now show some 
+drive information and under Drive Name the name you gave to the HDF ("myaros.hdf").
+Confirme twice with "OK" and then select "Low Level Format Drive" (and confirm).
+Click "Save changes to drive" and "exit". When it asks to reboot, confirm and the
+system reboots.
+- After reboot, open a Shell (in "System"). And type "info" + <return>. You 
+should see two new drives labeled "udh0:" and "udh1:".
+- Format the drives by typing the following in the shell:
+format drive udh0: name "aros" quick
+format drive udh1: name "programs" quick
+[HINT: If you don't use quick, the format takes longer, but if you intend to
+compress the hdf later, a full format is the better option (compressed hdf file
+will be smaller]
+- Both drives should now show up on Workbench (each with 2GB).
+
+2nd step: Copy AROS files on the AROS partition
+- Exit from FS-UAE using F12
+- In the FS-UAE-Launcher, under "Hard Drives" select the following directory
+as additional drive:
+~/ApolloOS_Master/bin/amiga-m68k/AROS.HUNK
+It's important to select "directory" as a drive (leave the created hdf "myaros.hdf"
+image like before)
+- Boot to workbench, open a shell and type the folllowing:
+copy AROS.HUNK: AROS: ALL
+This copies all freshly compiled AROS-files to myaros.hdf (on AROS: partition).
+
+3rd step: Copy image to CF-card (or SD-card with CF-card adapter)
+- Open a shell under linux and type:
+lsblk
+This shows all connected "block devices".
+- Now connect CF-card-adapter with CF-card (or insert SD-Card into SD-card-reader).
+Type "lsblk" + <return> again. You should now see an additional block device,
+for example /dev/sdb or /dev/sdc.
+- Now write the myaros.hdf file to this block-device:
+sudo dd if=myaros.hdf of=/dev/sdx bs=1M status=progress
+Replace sdx with the corresponding block-device.
+DISCLAIMER: CHECK CAREFULLY THAT YOU SELECT THE CORRECT DEVICE. THE DD COMMAND
+IS ALSO KNOWN AS "DISK DESTROYER". IF YOU SELECT THE WRONG DEVICE HERE, YOU
+ARE GOING TO DESTROY ALL DATA ON THIS DEVICE. I AM IN NO WAY RESONSIBLE FOR 
+ANY DATA YOU MIGHT USE!
+
+This takes some take. Once it has finished, take the CF/SD-card out and insert
+in into your V4SA. If your V4SA contains a standard core (= you have not flashed
+another kickstart, but are using the aros.rom from ApolloOS), it should boot!
+
+MAP THE FRESHLY COMPILED AROS-ROM
+
+If the system booted - great! This means that the freshly created build and the
+AROS-partition (on myaros.hdf) work. But at this point, we are still using the
+AROS-ROM delivered inside the V4SA-core. If we want to make sure, we are using 
+the new aros.rom we have compiled, we must first test if it works.
+
+1st step: Copy over the new aros.rom and vcontrol
+- To make things easier we are going to mount our CF-card directly in FS-UAE.
+Connect the CF-card on Linux (like before), make sure that it's there (by typing
+lsblk + <return> in the shell). To make it writable, type:
+sudo chmod 666 /dev/sdx
+[Replace sdx with the block-device on your system - again: make sure you chose 
+the right one!]
+Check that it worked with:
+ls -l /dev/sdx
+You should see something like:
+brw-rw-rw- 1 root disk 8, 0 Mar 26 11:37 /dev/sdx
+- Now select this drive instead of myaros.hdf file. This means that in the future
+we can write directly to the CF-card from FS-UAE (so, basically, we don't need
+myaros.hdf any more and you can delete it - or keep it to have a backup of a 
+clean installation with just the basic AROS).
+- Change the directory drive from before ("AROS.HUNK") to ~/ApolloOS_Master.
+- To map the aros.rom, we also need the program vcontrol that is included in the
+official SAGA-Driver-package. So, download the package:
+http://www.apollo-core.com/downloads/SAGADriver.lha
+Extract it inside the ~/ApolloOS_Master directory.
+- Boot to workbench, open a shell and copy the new aros.rom and vcontrol:
+copy ApolloOS_Master:aros.rom aros:
+copy ApolloOS_Master:SAGADriver/c/VControl aros:c/
+- Shut down FS-UAE and insert CF-card in V4SA. Boot, open a shell and 
+type:
+aros:c/vcontrol mr=aros:aros.rom
+The system will map the new aros.rom (this might take some seconds) and then
+reboots using the mapped rom (normally the screen doesn't go black but stays
+unchanged until the system reboots).
+- To make sure you are using the new rom, reboot again (using a "warm" reboot
+by pressing CTRL-LEFT+WINDOWS+CTRL-RIGHT keys, which corresponds to CTRL+AMIGA+
+AMIGA on a real Amiga keybord) and press down immediately the two mouse buttons 
+to get to the "Early Startup Control". On top you should see the Release number 
+and build date of the actual ROM - it should be different between a "cold" 
+reboot (= power off/on = flashed rom) and a "warm" reboot (= rom mapped with 
+vcontrol).
+
+FLASH THE NEW ROM (OPTIONAL AND ONLY RECOMMENDED IF YOU KNOW WHAT YOU DO)
+
+Normally, the temporary map functionality of vcontrol is enough to test a new 
+rom. But it is possible to change the rom permanently writing it to the flash
+memory of V4SA. 
+To do so:
+- Copy over the vampireflash utility (from the SAGADriver-package) like we 
+copied over vcontrol (using FS-UAE).
+- Boot up on V4SA, open a shell and type:
+aros:c/vampireflash aros:aros.rom
+DISCLAIMER: FLASHING A NEW ROM IS ALWAYS A RISKY PROCESS WHICH MIGHT LEAD TO
+A "BRICKED" SYSTEM (= V4SA WONT BOOT ANY MORE). IN THIS CASE YOU NEED TO HAVE
+AN EXTERNAL USB-BLASTER + THE QUARTUS SOFTWARE TO BRING BACK YOUR V4SA TO LIVE.
+IF YOU DON'T HAVE A BLASTER + QUARTUS - OR IF YOU ARE NOT SURE ABOUT WHAT YOU
+ARE DOING - DON'T USE VAMPIREFLASH BUT USE THE VCONTROL MAPROM FUNCTIONALITY
+TO MAP YOUR ROM TEMPORARILY. AGAIN: I AM NOT RESPONSIBLE IF YOUR SYSTEM DOESN'T
+BOOT ANY MORE.
+VERY IMPORTANT: DO NOT POWER OFF OR REBOOT YOUR VAMPIRE DURING FLASHING (YOU 
+CAN ALMOST BE SURE TO BRICK YOUR SYSTEM IF YOU DO SO).
+AFTER FLASHING POWER OFF FOR 10 SECONDS AND THEN REBOOT.
+
+CHANGE SCREEN RESOLUTION
+
+By default, AROS uses a standard screen resolution. If we want to use higher
+SAGA resolution, we must set it via ScreenMode tool in System => Prefs drawer.
+- Open ScreenMode-Program by clicking on aros => System => Prefs => ScreenMode
+(you have to scroll down).
+- If possible, close all windows.
+- Select a SAGA screen resolution (for example 1280x720, 32Bit ARGB), test it 
+and select "save".
+
+Problems:
+The system might freeze at this point. If it does try several times. If it 
+still doesn't work:
+- Reboot by holding down the two mouse buttons and by selecting "Boot without
+startup-sequence".
+- Once in the shell, edit the startup-sequence by opening it with:
+aros:tools/editor s:startup-sequence
+- Comment out the line IPrefs and the entire section for AREXX (rexxmaster etc.).
+Don't forget to save the changes (use "Save changes" and control with
+"type s:startup-sequence" that the lines are commented out (wich means: ; at the
+beginning of the line).
+- Reboot and retry with ScreenMode (if necessary several times - I have the 
+impression, that ScreenMode is a bit buggy for the moment, but sooner or later 
+it should work).
+- Finally, delete the ; before IPrefs in the startup-sequence again (so that
+AROS boots with the selected resolution).
+[As to the AREXX block that we also commented out, leave it like that for the
+moment - I have the impression that REXXMASTER is also buggy.]
+
+IMPORTANT: NEVER EVER INSTALL SAGA DRIVERS PACKAGE UNDER AROS! AROS ALREADY 
+CONTAINS THE NECESSARY DRIVERS FOR SAGA RESOLUTIONS.
+
+GET NETWORK (PLUS SAMBA AND VNC) WORKING
+
+Until now we always had to swap CF-cards to make changes in our image which is 
+cumbersome. To have a nicer way to transfer data between Linux and AROS let's 
+get network, samba (and optionally VNC) working.
+
+1st step:
+- Download SAMBA client for AROS (= AmigaOS):
+https://aminet.net/comm/tcp/smbfs-68k.lha
+Extract it to ~/ApolloOS_Master (or another location if you prefer).
+- Download TwinVNC (Beta):
+https://aminet.net/comm/tcp/TwinVNC0.8beta.lha
+Extract it to ~/ApolloOS_Master (or another location if you prefer).
+- Start FS-UAE again, open a shell an copy the necessary files over:
+copy ApolloOS_Master:samba-1.74-68/samba aros:c/
+copy ApolloOS_Master:TwinVNC0.8Beta aros: all
+
+2nd step: Share a folder from linux
+Refer to linux documentation to do so. 
+- Normally, you must first install it  (if it isn't already installed), for 
+example by typing:
+sudo apt-get install samba
+in you linux shell.
+- You must then share a folder (for example ~/ApolloOS_Master). In general
+(for example if you are using GNOME Mate) you can do that via file browser
+and a right click: Setup a name for the share, workgroup (normally "workgroup"),
+a user name and a password (in  order to simplify things and see if it works you 
+can also allow anonymous connections with no user name and no password).
+- Make sure that besides the sharing name, username and password, you also
+know the IP address of your samba server. You can get it typing:
+ip address
+in the linux shell.
+ 
+3rd step: Start network
+- After copying smbfs and TwinVNC, insert CF-card into V4SA, boot and open 
+a shell. To start the network, type:
+run aros:system/network/arostcp/c/arostcp
+You should get the message:
+bsdsocket.library task address: [address]
+To check if you network is running you can try to ping your router, for example:
+ping 192.168.0.1
+You should see a message like this one:
+64 bytes from 192.168.0.1 ...
+every few seconds (or an error message if it doesn't work).
+Replace the ip address with the address of your router (it might be different).
+
+4th step: Start samba client
+- In the AROS-shell type:
+run c:smbfs workgroup=workgroup user=xxxxxxxxxx password=yyyyyyyyyy //192.168.0.z/sharename
+Replace x, y, z with the values you defined for the samba server.
+- If it worked you should see the new volume (= sharename) on the workbench.
+- Switch to the samba drive in the shell and see if you can access the data:
+sharename:
+or 
+cd sharename:
+Then type:
+dir
+If you see the directory of your folder shared via sambe, it worked, and from
+now on you can copy files from linux to aros without having to swap cf cards.
+
+5th step: Use TwinVNC to do everything from the V4SA
+After installing and configuring samba, you can download files on linux and 
+copy them over via samba. This is already much more comfortable - but, of course,
+if you want to download a file, you must always go back to linux, download it 
+there and then go back to the V4SA to copy it.
+It is possible to do everything from the V4SA by using VNC (that we already 
+copied over). To get it to work, you must basically do 2 things:
+1) Install, configure and start a VNC server on Linux. One of the simplest ones
+(I think) is x11vnc:
+sudo apt-get install x11vnc
+Run it:
+x11vnc
+[If it doesn't work out of the box, refer to the Linux documentation.]
+2) Run TwinVNC on AROS and connect to the server:
+aros:TwinVNC0.8Beta/TwinVNC_040
+Enter the IP address of the linux box (+ password if you set one).
+You should now be able to see everything from your linux box via TwinVNC.
+I recommend to set the resolution on linux to the same used on V4SA (for 
+example 1280x720).
+
+
