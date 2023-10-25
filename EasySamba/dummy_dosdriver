@@ -1,0 +1,5 @@
+Handler = L:smb2-handler
+StackSize = 40000
+Priority = 5
+GlobVec = -1
+Activate = 0

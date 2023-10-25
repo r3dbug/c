@@ -1,0 +1,86 @@
+---------------------------------------------
+| SAMBA INSTALLATION AND CONFIGURATION TOOL |
+| V0.3c 12/02/2023 (c) by RedBug          |
+---------------------------------------------
+
+IMPORTANT DISCLAIMER / WARNING:
+-------------------------------
+This script comes with absolutely NO WARRANTY!
+It might not work (which would be just annoying).
+It might also (and this is worse) overwrite files on your system
+(and make it unusable in the worst case).
+I AM IN NO WAY RESPONSIBLE FOR ANY DAMAGE THIS SCRIPT MIGHT DO ON YOUR SYSTEM!
+So, if this seems too risky to you and you decide not to proceed,
+click CANCEL in the requester!
+
+This script is published as free software under the GPL licence 
+Do with it whatever you want! ;)
+
+
+FAQ
+---
+
+Q: What system is this script for?
+A: 
+It is for ApolloOS (tested on R9.2). No idea, if it works on other systems
+and with other network stacks than AROSTCP.
+
+Q1: What does the script do?
+A:
+
+1) In the installation (first) part, the script does the following:
+It extracts the following packages to the ram-disk:
+- smb2fs.m68k-amigaos.lha
+- filesysbox.m68k-amigaos.lha
+The files have been included for convenience (the can be found on Aminet,
+maybe check, if there are newer versions).
+It then copies the following files:
+- L:smb2-handler
+- LIBS:filesysbox.library
+
+2) In the configuration (second) part, the script does the following:
+It asks for all necessary informations (ip,username,password,volume name,home).
+It then creates the corresponding dosdriver (which can be found in DEVS:DOSDrivers)
+
+Q2: How can I mount the share after that?
+There are two possibilities:
+1) Got to your SYS:Network drawer and click on the icon "activate_samba".
+(You can drag the icon to another location if you prefer.)
+2) Open a shell and type:
+dir your-share-name:
+
+Q3: Can I also activate SAMBA by clicking on the icon in DEVS:DOSDrivers or
+by mounting it via the shell (mount your-share-name:)?
+A:
+As far as I understand, this is not necessary. The handler is automatically 
+loaded (and "mounted") when ApolloOS starts up. To avoid any issues (due to
+timing, because ApolloOS first needs to go online before the share can be 
+activated) the option ACTIVATE (both in the icon as in the script) has been 
+disabled. (It can then simply be activated like described in Q2.)
+
+Q4: Any known issues?
+When using it in ApolloOS and under the Workbench, it is not possible to open
+any drawer by clicking on the icon (probably a but either in the handler or in
+Workbench). 
+Use DOpus or the shell instead to copy the files.
+
+Q5: Can it be used for multiple shares?
+A:
+Yes, just launch the configuration script for each share.
+The activate_samba script in SYS:Network will only activate the last share,
+but you can always activate the other share by typing cd share-name: in the
+shell (or by accessing them directly from a program).
+
+VERSIONS
+
+V0.3c:
+- Cleaned up the script and corrected problems with nbsp; 
+(thx morten.dynamite) 
+
+V0.2:
+- Added VOLUME parameter in handler
+- Added an icon to activate the share (SYS:Networks) 
+
+V0.1:
+- Initial version.
+

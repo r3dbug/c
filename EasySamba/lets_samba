@@ -1,0 +1,48 @@
+echo "---------------------------------------------"
+echo "| SAMBA INSTALLATION AND CONFIGURATION TOOL |"
+echo "| V0.3c 12/02/2023 (c) by RedBug          |"
+echo "---------------------------------------------"
+echo
+echo "IMPORTANT DISCLAIMER / WARNING:"
+echo "-------------------------------"
+echo "This script comes with absolutely NO WARRANTY!"
+echo "It might not work (which would be just annoying)."
+echo "It might also (and this is worse) overwrite files on your system"
+echo "(and make it unusable in the worst case)."
+echo "I AM IN NO WAY RESPONSIBLE FOR ANY DAMAGE THIS SCRIPT MIGHT DO ON YOUR SYSTEM!"
+echo "So, if this seems too risky to you and you decide not to proceed,"
+echo "click CANCEL in the requester!"
+echo
+echo "This script is published as free software under the GPL licence."
+echo "Do with it whatever you want! ;)"
+echo
+echo "-------------------------------------------------------------"
+echo "| Welcome to the SAMBA installation & configuration script! |"
+echo "-------------------------------------------------------------"
+echo 
+
+RequestChoice >ENV:SMBINSTALL "Installation" "*nDo you want to unpack and install smb2fs and filesysbox or just do the configuration?*n" "Yes, please! (Install & configure)|No, just do the configuration!|I am not sure ...|Cancel"
+If NOT $SMBINSTALL EQ "0"
+  If $SMBINSTALL EQ "1"
+    echo "Unpacking and installing SAMBA ..." 
+    lha x smb2fs.m68k-amigaos.lha ram:
+    copy ram:smb2fs/l/smb2-handler.020 SYS:L/smb2-handler	
+    lha x filesysbox.m68k-amigaos.lha ram:
+    copy ram:filesysbox/Libs/filesysbox.library.020 LIBS:filesysbox.library
+    echo "The necessary packages have been successfully installed."
+    echo "Now proceed to configuration ..." 
+    execute configure_samba
+  Endif
+  If $SMBINSTALL EQ "2"
+    echo "The necessary packages are already installed - proceed to configuration."  
+    execute configure_samba
+  Endif
+  If $SMBINSTALL EQ "3"
+     echo "Please read the read.me for more information."
+  Endif
+Else
+  echo "You canceled the installtion script (aborting)."
+Endif
+
+echo "This is the end (my friend:)."
+echo    

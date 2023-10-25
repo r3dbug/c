@@ -1,0 +1,26 @@
+
+echo "Welcome to SAMBA configuration!"
+
+Set SMBASSIGN `RequestString TITLE "Volume name" TEXT "What name (assign) do you want to give to your samba drive? (e.g. samba)" ""`
+Set SMBIP `RequestString TITLE "IP address" TEXT "Please enter your SAMBA IP address:" "192.168.0."`
+Set SMBUSER `RequestString TITLE "User" TEXT "Please enter your SAMBA username:" ""`
+Set SMBPWD `RequestString TITLE "Password" TEXT "Please enter your SAMBA password:" ""`
+Set SMBHOME `RequestString TITLE "Drawer" TEXT "Please enter your SAMBA drawer (= home directory)" ""`
+
+; create startup parameter
+echo "smb://$SMBUSER:$SMBPWD@$SMBIP/$SMBHOME VOLUME $SMBASSIGN" >ENV:SMBSTARTUP
+
+; prepare dosdriver
+copy dummy_dosdriver "DEVS:DOSDrivers/$SMBASSIGN"
+copy dummy_dosdriver_icon.info "DEVS:DOSDrivers/$SMBASSIGN.info"
+   
+; add startup line to dosdriver
+echo "Startup = *"$SMBSTARTUP*"" >>DEVS:DOSDrivers/$SMBASSIGN 
+
+; create mount script
+copy activate_samba SYS:Network/
+copy activate_samba.info SYS:Network/
+echo "cd $SMBASSIGN:" >>SYS:Network/activate_samba
+
+RequestChoice >NIL: "Finished!" "The configuration is finished!" "Yuppieh!|Great!|Amiga rulez!"
+
