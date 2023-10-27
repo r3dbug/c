@@ -1,0 +1,9 @@
+
+all:
+	sc link opttime optsize cpu=68040 stripdebug ApolloWheel
+	sc link TestMouse
+	delete ApolloWheel.o
+	delete ApolloWheel.lnk
+	delete TestMouse.o
+	delete TestMouse.lnk
+	
