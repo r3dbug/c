@@ -1,0 +1,5 @@
+FROM LIB:c.o "f2w.o"+"f2w_asm.o"+"bitfile.o"+"f2w.o"+"f2w.o"
+TO "f2w"
+LIB LIB:scm881.lib
+    LIB:sc.lib LIB:amiga.lib
+

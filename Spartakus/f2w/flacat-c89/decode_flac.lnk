@@ -1,0 +1,4 @@
+FROM LIB:c.o "decode_flac.o"+"flacat.o"+"flacat_asm.o"
+TO "decode_flac"
+LIB LIB:sc.lib LIB:amiga.lib
+

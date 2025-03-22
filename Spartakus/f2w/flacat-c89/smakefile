@@ -1,0 +1,8 @@
+
+all: flacat.c decode_flac.c flacat_asm.s
+	vasm -m68080 -Fhunk -o flacat_asm.o flacat_asm.s
+	sc flacat.c
+	sc cpu=68020 math=68881 flacat_seek.c
+	sc decode_flac.c link flacat.o flacat_asm.o
+	sc play_flac.c link flacat.o flacat_asm.o
+	sc cpu=68020 math=68881 seek_flac.c link flacat_seek.o flacat_asm.o

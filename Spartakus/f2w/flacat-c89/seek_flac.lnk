@@ -1,0 +1,5 @@
+FROM LIB:c.o "seek_flac.o"+"flacat_seek.o"+"flacat_asm.o"
+TO "seek_flac"
+LIB LIB:scm881.lib
+    LIB:sc.lib LIB:amiga.lib
+

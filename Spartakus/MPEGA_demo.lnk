@@ -1,0 +1,5 @@
+FROM LIB:c.o "MPEGA_demo.o"
+TO "MPEGA_demo"
+LIB LIB:scm881.lib
+    LIB:sc.lib LIB:amiga.lib
+

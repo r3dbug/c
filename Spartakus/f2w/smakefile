@@ -1,0 +1,5 @@
+
+all: bitfile.c f2w.c f2w_asm.s
+	vasm -m68080 -Fhunk -o f2w_asm.o f2w_asm.s
+	sc -o bitfile.o bitfile.c
+	sc link math=68881 cpu=68020 -o f2w f2w_asm.o bitfile.o f2w.c f2w.c

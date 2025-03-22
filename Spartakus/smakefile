@@ -1,0 +1,50 @@
+#
+# Makefile for Spartakus
+#
+
+.c.o:
+      SC WITH=SCOPTIONS.020 NOLINK $*.c
+
+TARGET = Spartakus
+
+COBJS = mp3.o events.o
+
+all: $(TARGET)
+   
+# Spartakus.o: Spartakus.c raw_tools.c
+
+#raw_tools.o: raw_tools.c 
+#    sc raw_tools.o
+    
+#flac_tools.o: flac_tools.c
+#    sc flac_tools.c
+    
+flacat_asm.o: flacat_asm.s
+    vasm -m68080 -Fhunk -o flacat_asm.o flacat_asm.s
+
+flacat_seek.o: flacat_seek.c flacat_seek.h
+    sc opttime flacat_seek.c
+
+flacat.o: flacat.c flacat.h
+    sc opttime flacat.c
+
+mp3.o: mp3.c mp3.h
+    sc mp3.c
+   
+events.o: events.c events.h
+    sc events.c
+    
+Spartakus_asm.o: Spartakus_asm.s
+    vasm -m68080 -Fhunk -o Spartakus_asm.o Spartakus_asm.s
+  
+$(TARGET) : Spartakus.o Spartakus_asm.o flacat_asm.o flacat.o flac_tools.c $(COBJS)
+   sc opttime Spartakus.c link $(COBJS) Spartakus_asm.o flacat_asm.o flacat.o to $(TARGET) NOICONS LIB LIB:scm.lib LIB:sc.lib LIB:amiga.lib
+   delete Spartakus.lnk >NIL:
+   copy Spartakus c:
+   
+clean:
+   delete flacat_asm.o
+   delete flac_tools.o
+   delete Spartakus.o
+   delete Spartakus_asm.o
+   delete Spartakus
